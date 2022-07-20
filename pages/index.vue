@@ -36,7 +36,7 @@
           rounded
           shadow-sm
         "
-        :disabled="disabled"
+        :disabled="isDisabled"
         @click="loadMore"
       >
         Load more
@@ -50,14 +50,17 @@ export default {
   async asyncData({ $axios }) {
     try {
       const { data: response } = await $axios.get('/api/v1/images')
-      const images = response.data.images
+      const images = response.images
       let next
-      if (response.data.next_cursor) {
-        next = response.data.next_cursor
+      let isDisabled = true
+      if (response.next_cursor) {
+        next = response.next_cursor
+        isDisabled = false
       }
       return {
         images,
-        next
+        next,
+        isDisabled
       }
     } catch (error) {
       // eslint-disable-next-line no-console
@@ -70,22 +73,7 @@ export default {
       next: null
     }
   },
-  mounted() {
-    this.fetchImages()
-  },
   methods: {
-    async fetchImages() {
-      try {
-        const response = await this.$axios.get('/api/v1/images')
-        this.images = response.data.images
-        if (response.data.next_cursor) {
-          this.next = response.data.next_cursor
-        }
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.log(error)
-      }
-    },
     async loadMore() {
       const params = new URLSearchParams()
       if (this.next) {

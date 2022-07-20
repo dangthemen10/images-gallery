@@ -48,9 +48,9 @@
                   shadow-md
                 "
                 :class="uploadStatus && 'bg-gray-600'"
-                :disabled="uploadStatus"
+                :hidden="error"
                 type="submit"
-                @click.prevent="uploadImage"
+                @click.prevent="submitUpload"
               >
                 {{ uploadStatus ? 'Uploading' : 'Upload' }}
               </button>
@@ -59,7 +59,11 @@
           <!--Image Preview-->
           <div class="p-4">
             <h3 class="text-semibold text-center mb-2">Image Preview</h3>
-            <AlertMessage v-if="error" :message="error" />
+            <AlertMessage
+              v-if="isHasStatus"
+              :status="status"
+              :message="message"
+            />
             <img
               v-if="filePreview"
               class="bg-white p-1 border rounded"
@@ -86,13 +90,17 @@ export default {
       fileSize: 0.0,
       uploadStatus: false,
       error: null,
-      router: this.$route
+      router: this.$route,
+      status: '',
+      message: '',
+      isHasStatus: false
     }
   },
   methods: {
     handleFileChange(e) {
       this.error = null
       this.file = e.target.files[0]
+      this.isHasStatus = false
       this.getImagePreviews(this.file)
     },
     formatBytes(size, decimals = 2) {
@@ -112,12 +120,15 @@ export default {
         }
         reader.readAsDataURL(image)
       } else {
-        this.error = 'FIle is not supported for size bigger than 1MB'
+        this.isHasStatus = true
+        this.error = true
+        this.status = 'fail'
+        this.message = 'FIle is not supported for size bigger than 1MB'
         this.filePreview = null
         this.fileSize = null
       }
     },
-    submitUpload(f) {
+    submitUpload() {
       if (!this.file) return
       const reader = new FileReader()
       reader.readAsDataURL(this.file)
@@ -125,29 +136,31 @@ export default {
         this.uploadImage(reader.result)
       }
     },
-    uploadImage() {
-      // eslint-disable-next-line no-console
-      console.log('formData', this.file)
+    async uploadImage(file) {
       this.uploadStatus = true
       const formData = new FormData()
-      if (this.file) formData.append('file', this.file)
-      this.$axios
+      if (this.file) formData.append('file', file)
+      await this.$axios
         .post('/api/v1/image', formData, {
           headers: {
             'Content-Type': 'multipart/form-data'
           }
         })
         .then((response) => {
-          // eslint-disable-next-line no-console
-          console.log('response', response)
           if (response.data.data.url) {
-            this.error = null
+            this.isHasStatus = true
+            this.error = false
+            this.message = 'Upload image successfully!!'
+            this.status = 'success'
             this.uploadStatus = false
             this.$router.push('/')
           }
         })
         .catch((error) => {
-          this.error = error.message
+          this.isHasStatus = true
+          this.message = error.message
+          this.error = true
+          this.status = 'fail'
           this.uploadStatus = false
         })
     }
